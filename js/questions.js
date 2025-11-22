@@ -1,10 +1,11 @@
-// questions.js (FIXED + SIMPLIFIED for PIXEL)
+// questions.js (FIXED + CLEANED for PIXEL)
 
 export const LEVELS = ["beginner", "intermediate", "master"];
 
 export function normalizeLevels(data, fallbackSubject = "this title") {
+  console.log("🔍 Normalizing data:", data);
 
-  // Already in correct format? (from your OpenRouter)
+  // Already in correct format? (from OpenRouter)
   if (data.beginner && data.intermediate && data.master) {
     return {
       beginner: normalizeArray(data.beginner, "easy"),
@@ -29,33 +30,54 @@ export function normalizeLevels(data, fallbackSubject = "this title") {
     }
   }
 
+  console.warn("⚠️ Using fallback questions");
   return buildFallback(fallbackSubject);
 }
 
 function normalizeArray(arr = [], difficulty) {
-  return arr.slice(0, 3).map((q, i) => ({
-    id: q.id || `${difficulty}-${i}-${Date.now()}`,
-    question: q.question?.trim() || "Question missing",
-    options: Array.isArray(q.options)
-      ? q.options
-      : ["A", "B", "C", "D"],
-    answer: normalizeAnswer(q),
-    difficulty
-  }));
+  if (!Array.isArray(arr) || arr.length === 0) {
+    console.warn(`⚠️ Empty or invalid array for ${difficulty}`);
+    return [];
+  }
+
+  return arr.slice(0, 3).map((q, i) => {
+    // Extract the answer
+    let answer = normalizeAnswer(q);
+    
+    // Get options array
+    let options = Array.isArray(q.options) ? q.options : ["A", "B", "C", "D"];
+    
+    // Ensure the answer is in the options
+    if (!options.includes(answer)) {
+      console.warn(`⚠️ Answer "${answer}" not in options, adding it`);
+      options[0] = answer;
+    }
+
+    return {
+      id: q.id || `${difficulty}-${i}-${Date.now()}`,
+      question: (q.question?.trim() || "Question missing").replace(/^LEGEND MODE:\s*/i, ''),
+      options: options,
+      answer: answer,
+      difficulty
+    };
+  });
 }
 
 // If AI sends "correct: 1" — fix it to text
 function normalizeAnswer(q) {
+  // If correct is a number, get the option at that index
   if (typeof q.correct === "number" && q.options?.[q.correct]) {
     return q.options[q.correct];
   }
 
-  if (typeof q.answer === "string") {
-    return q.answer;
+  // If answer is provided as string
+  if (typeof q.answer === "string" && q.answer.trim()) {
+    return q.answer.trim();
   }
 
+  // If options exist, return first one as fallback
   if (q.options?.length) {
-    return q.options[0]; // fallback
+    return q.options[0];
   }
 
   return "A";
@@ -66,7 +88,7 @@ function buildFallback(subject) {
     beginner: [
       {
         id: "fallback-1",
-        question: `What kind of universe does ${subject} take place in?`,
+        question: `What genre best describes ${subject}?`,
         options: ["Fantasy", "Reality", "Sci-fi", "History"],
         answer: "Fantasy"
       },
@@ -78,9 +100,9 @@ function buildFallback(subject) {
       },
       {
         id: "fallback-3",
-        question: `Which one is important in ${subject}?`,
-        options: ["Friends", "Enemies", "Weapons", "School"],
-        answer: "School"
+        question: `What is a key theme in ${subject}?`,
+        options: ["Friendship", "Revenge", "Adventure", "Mystery"],
+        answer: "Adventure"
       }
     ],
     intermediate: [
@@ -92,41 +114,42 @@ function buildFallback(subject) {
       },
       {
         id: "fallback-5",
-        question: `Which power structure appears in ${subject}?`,
-        options: ["Kingdoms", "Guilds", "Houses", "Planets"],
-        answer: "Houses"
+        question: `What drives the main character in ${subject}?`,
+        options: ["Power", "Love", "Justice", "Survival"],
+        answer: "Justice"
       },
       {
         id: "fallback-6",
-        question: `Who faces the biggest danger?`,
-        options: ["Side character", "Villain", "Hero", "City"],
+        question: `Who faces the biggest danger in ${subject}?`,
+        options: ["Side character", "Villain", "Hero", "Everyone"],
         answer: "Hero"
       }
     ],
     master: [
       {
         id: "fallback-7",
-        question: `Which hidden symbol appears in ${subject}?`,
+        question: `What is a hidden symbol in ${subject}?`,
         options: ["Snake", "Lion", "Crown", "Mirror"],
         answer: "Mirror"
       },
       {
         id: "fallback-8",
-        question: `What is the deepest theme?`,
+        question: `What is the deepest theme of ${subject}?`,
         options: ["Power", "Death", "Love", "Memory"],
         answer: "Death"
       },
       {
         id: "fallback-9",
-        question: `What separates true fans?`,
-        options: ["Quotes", "Lore", "Music", "Movies"],
-        answer: "Lore"
+        question: `What separates casual fans from true fans of ${subject}?`,
+        options: ["Knowing quotes", "Understanding lore", "Soundtrack knowledge", "Character names"],
+        answer: "Understanding lore"
       }
     ]
   };
 }
 
 export function createQuizState(questionMap) {
+  console.log("✅ Creating quiz state with:", questionMap);
   return {
     questionMap,
     score: 0

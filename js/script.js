@@ -9,7 +9,6 @@ let timerId = null;
 let timerValue = QUESTION_TIME;
 let currentLevel = 0;
 let currentIndex = 0;
-let currentStep = 0; // 0 = classic, 1 = legend, 2 = rapid
 let levels = [];
 
 const ui = {};
@@ -39,9 +38,11 @@ function initUI() {
   ui.timer = $("timer");
   ui.score = $("scoreDisplay");
   ui.progress = $("progressBar");
+  ui.questionCounter = $("questionCounter");
+  ui.nextBtn = $("nextBtn");
+  ui.quitBtn = $("quitBtn");
 
   ui.resultSummary = $("resultSummary");
-  ui.badgeDisplay = $("badgeDisplay");
   ui.retryBtn = $("retryBtn");
 }
 
@@ -51,6 +52,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initUI();
   ui.startBtn.onclick = handleStart;
   ui.retryBtn.onclick = resetToHome;
+  ui.nextBtn.onclick = nextQuestion;
+  ui.quitBtn.onclick = resetToHome;
 });
 
 // ===================== SEARCH =======================
@@ -67,6 +70,7 @@ async function handleStart() {
 
   isSearching = true;
   ui.startBtn.disabled = true;
+  ui.startBtn.textContent = "Searching...";
 
   try {
     const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
@@ -79,6 +83,7 @@ async function handleStart() {
 
   isSearching = false;
   ui.startBtn.disabled = false;
+  ui.startBtn.textContent = "Start";
 }
 
 function renderSearchResults(results = []) {
@@ -113,7 +118,6 @@ async function selectItem(item) {
     selectedContent = await res.json();
 
     updateMeta(selectedContent);
-
     await prepareQuiz();
     startGame();
 
@@ -148,7 +152,6 @@ async function prepareQuiz() {
     return;
   }
 
-  // ✅ FIX: Use questionMap, not levels
   levels = [
     quizState.questionMap.beginner,
     quizState.questionMap.intermediate,
@@ -158,7 +161,6 @@ async function prepareQuiz() {
   quizState.score = 0;
   currentLevel = 0;
   currentIndex = 0;
-  currentStep = 0;
 
   console.log("✅ LEVELS READY:", levels);
 }
@@ -167,144 +169,175 @@ async function prepareQuiz() {
 function startGame() {
   ui.home.classList.add("hidden");
   ui.game.classList.remove("hidden");
-  loadNext();
+  ui.result.classList.add("hidden");
+  
+  updateProgress();
+  loadQuestion();
 }
 
-function loadNext() {
+function loadQuestion() {
   if (!levels.length || currentLevel >= levels.length) {
     showResults();
     return;
   }
 
-  if (currentStep === 0) loadClassic();
-  else if (currentStep === 1) loadLegend();
-  else if (currentStep === 2) loadRapid();
-}
+  if (currentIndex >= levels[currentLevel].length) {
+    currentLevel++;
+    currentIndex = 0;
+    
+    if (currentLevel >= levels.length) {
+      showResults();
+      return;
+    }
+  }
 
-// =============== CLASSIC ===================
-function loadClassic() {
   const question = levels[currentLevel][currentIndex];
-
+  
+  // Validate question exists
+  if (!question || !question.question) {
+    console.error("❌ Invalid question at level", currentLevel, "index", currentIndex);
+    currentIndex++;
+    loadQuestion();
+    return;
+  }
+  
   ui.questionText.innerText = question.question;
   ui.options.innerHTML = "";
+  ui.nextBtn.disabled = true;
 
+  // Validate options exist
+  if (!question.options || !Array.isArray(question.options) || question.options.length === 0) {
+    console.error("❌ No valid options for question");
+    ui.options.innerHTML = '<p style="color: var(--danger);">Error loading question options</p>';
+    ui.nextBtn.disabled = false;
+    return;
+  }
+
+  // Create option buttons
   question.options.forEach(opt => {
     const btn = document.createElement("button");
-    btn.innerText = opt;
-
-    btn.onclick = () => {
-      if (opt === question.answer) quizState.score += 10;
-      nextStep();
-    };
-
-    ui.options.appendChild(btn);
-  });
-
-  runTimer();
-}
-
-// =============== LEGEND ====================
-function loadLegend() {
-  const hint =
-    selectedContent.genre ||
-    selectedContent.overview?.slice(0, 100) ||
-    "Famous pop culture title";
-
-  ui.questionText.innerText = `LEGEND MODE: Guess from this clue — ${hint}`;
-
-  ui.options.innerHTML = `
-    <input id="legendInput" placeholder="Enter guess">
-    <button id="legendBtn">Submit</button>
-  `;
-
-  $("legendBtn").onclick = () => {
-    const guess = $("legendInput").value.trim().toLowerCase();
-    const answer = selectedContent.title.toLowerCase().trim();
-
-    if (guess === answer || guess.includes(answer) || answer.includes(guess)) {
-      quizState.score += 20;
-    }
-
-    nextStep();
-  };
-
-  runTimer();
-}
-
-// ============ RAPID ==================
-function loadRapid() {
-  const question = levels[currentLevel][currentIndex];
-
-  ui.questionText.innerText = "RAPID MODE:\n" + question.question;
-  ui.options.innerHTML = "";
-
-  question.options.forEach(opt => {
-    const btn = document.createElement("button");
+    btn.className = "option-btn";
     btn.textContent = opt;
 
-    btn.onclick = () => {
-      if (opt === question.answer) quizState.score += 5;
-      nextStep();
-    };
-
+    btn.onclick = () => handleAnswer(btn, opt, question.answer);
     ui.options.appendChild(btn);
   });
 
   runTimer();
+  updateProgress();
+}
+
+function handleAnswer(btn, selectedOption, correctAnswer) {
+  clearInterval(timerId);
+  
+  // Disable all buttons
+  const allBtns = ui.options.querySelectorAll(".option-btn");
+  allBtns.forEach(b => b.disabled = true);
+
+  // Check if answer is correct
+  const isCorrect = selectedOption === correctAnswer;
+  
+  if (isCorrect) {
+    btn.classList.add("correct");
+    quizState.score += 10;
+    ui.questionText.innerText = "✅ Correct!";
+  } else {
+    btn.classList.add("wrong");
+    ui.questionText.innerText = `❌ Wrong! The correct answer was: ${correctAnswer}`;
+    // Highlight correct answer
+    allBtns.forEach(b => {
+      if (b.textContent === correctAnswer) {
+        b.classList.add("correct");
+      }
+    });
+  }
+
+  ui.score.innerText = `Score: ${quizState.score}`;
+  
+  // Auto-advance to next question after 2 seconds
+  window.autoAdvanceTimeout = setTimeout(() => {
+    nextQuestion();
+  }, 2000);
+}
+
+function nextQuestion() {
+  clearInterval(timerId);
+  clearTimeout(window.autoAdvanceTimeout); // Clear any pending auto-advance
+  currentIndex++;
+  loadQuestion();
 }
 
 // ============= TIMER =====================
 function runTimer() {
   clearInterval(timerId);
   timerValue = QUESTION_TIME;
-  ui.timer.innerText = timerValue;
+  ui.timer.innerText = `${timerValue}s`;
 
   timerId = setInterval(() => {
     timerValue--;
-    ui.timer.innerText = timerValue;
+    ui.timer.innerText = `${timerValue}s`;
 
     if (timerValue <= 0) {
       clearInterval(timerId);
-      nextStep();
+      handleTimeout();
     }
   }, 1000);
 }
 
-// ============= PROGRESSION ===============
-function nextStep() {
-  clearInterval(timerId);
+function handleTimeout() {
+  // Get current question to find correct answer
+  const question = levels[currentLevel][currentIndex];
+  
+  // Disable all buttons
+  const allBtns = ui.options.querySelectorAll(".option-btn");
+  allBtns.forEach(b => {
+    b.disabled = true;
+    // Highlight the correct answer
+    if (b.textContent === question.answer) {
+      b.classList.add("correct");
+    }
+  });
 
-  currentStep++;
-
-  if (currentStep > 2) {
-    currentStep = 0;
-    currentIndex++;
-  }
-
-  if (currentIndex >= levels[currentLevel].length) {
-    currentIndex = 0;
-    currentLevel++;
-  }
-
-  updateProgress();
-  loadNext();
+  // Show timeout message
+  ui.questionText.innerText = `⏰ Time's up! The correct answer was: ${question.answer}`;
+  
+  // Auto-advance to next question after 2 seconds
+  window.autoAdvanceTimeout = setTimeout(() => {
+    nextQuestion();
+  }, 2000);
 }
 
+// ============= PROGRESSION ===============
 function updateProgress() {
-  const total = 9; // 3 levels × 3 questions
-  const done = currentLevel * 3 + currentIndex;
+  const totalQuestions = levels.reduce((sum, level) => sum + level.length, 0);
+  let completedQuestions = 0;
+  
+  for (let i = 0; i < currentLevel; i++) {
+    completedQuestions += levels[i].length;
+  }
+  completedQuestions += currentIndex;
 
-  ui.progress.style.width = `${(done / total) * 100}%`;
+  const percentage = (completedQuestions / totalQuestions) * 100;
+  ui.progress.style.width = `${percentage}%`;
+  
+  ui.questionCounter.innerText = `${completedQuestions} / ${totalQuestions}`;
   ui.score.innerText = `Score: ${quizState.score}`;
 }
 
 // ============= RESULTS ==================
 function showResults() {
+  clearInterval(timerId);
+  
   ui.game.classList.add("hidden");
   ui.result.classList.remove("hidden");
 
-  ui.resultSummary.innerText = `Final Score: ${quizState.score}`;
-  ui.badgeDisplay.innerHTML = `<h2>🔥 Completed!</h2>`;
+  const totalQuestions = levels.reduce((sum, level) => sum + level.length, 0);
+  const percentage = Math.round((quizState.score / (totalQuestions * 10)) * 100);
+
+  ui.resultSummary.innerText = `
+    Final Score: ${quizState.score} / ${totalQuestions * 10}
+    Accuracy: ${percentage}%
+  `;
 }
 
 // ============ RESET =============
@@ -316,7 +349,6 @@ function resetToHome() {
   levels = [];
   currentLevel = 0;
   currentIndex = 0;
-  currentStep = 0;
 
   ui.result.classList.add("hidden");
   ui.game.classList.add("hidden");
@@ -325,5 +357,6 @@ function resetToHome() {
   ui.searchResults.innerHTML = "";
   ui.titleInput.value = "";
   ui.progress.style.width = "0%";
+  ui.score.innerText = "Score: 0";
+  ui.questionCounter.innerText = "0 / 0";
 }
-

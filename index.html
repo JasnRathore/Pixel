@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="data:,">
-
 </head>
 <body>
   <div class="neon-grid"></div>
@@ -18,7 +17,7 @@
       <span class="logo">PIXEL</span>
       <p class="tagline">PIXEL — Decode the Screen</p>
     </div>
-    <div class="status-pill" id="connectionStatus">Offline</div>
+    <div class="status-pill" id="connectionStatus">Online</div>
   </header>
 
   <main>
@@ -29,8 +28,7 @@
           <input id="titleInput" type="text" placeholder="Search movie, anime, or game" />
           <button id="startBtn" class="primary">Start</button>
         </div>
-        <p class="hint">
-          Play. Think. Dominate.</p>
+        <p class="hint">Play. Think. Dominate.</p>
         <div class="results-shell">
           <p class="results-label">Pick your universe</p>
           <div id="searchResults" class="results-grid"></div>
@@ -38,34 +36,31 @@
       </div>
 
       <div class="mode-title">
-        <h3>PIXEL Challenge Mode Activated</h3>
-        <p>Each level contains mixed question types</p>
+        <h3>PIXEL Challenge Mode</h3>
+        <p>Test your knowledge across 3 difficulty levels</p>
       </div>
       
       <div class="levels">
-        <article class="level-card locked" data-level="beginner">
+        <article class="level-card" data-level="beginner">
           <div class="level-header">
             <span class="badge">Lv. 01</span>
             <h3>Beginner</h3>
           </div>
-          <p>Warm-up trivia · 3 quick hits</p>
-          <span class="lock">Locked</span>
+          <p>Warm-up trivia · 3 questions</p>
         </article>
-        <article class="level-card locked" data-level="intermediate">
+        <article class="level-card" data-level="intermediate">
           <div class="level-header">
             <span class="badge">Lv. 02</span>
             <h3>Intermediate</h3>
           </div>
           <p>Plot twists & hidden lore</p>
-          <span class="lock">Locked</span>
         </article>
-        <article class="level-card locked" data-level="master">
+        <article class="level-card" data-level="master">
           <div class="level-header">
             <span class="badge">Lv. 03</span>
             <h3>Master</h3>
           </div>
           <p>Only legends make it here</p>
-          <span class="lock">Locked</span>
         </article>
       </div>
     </section>
@@ -98,39 +93,17 @@
         <div class="options" id="options"></div>
       </div>
       <div class="game-actions">
-        <button id="nextBtn" class="secondary" disabled>Next</button>
-      </div>
-      
-      <!-- EMOJI MODE UI -->
-      <div class="emoji-mode-panel hidden" id="emojiModePanel">
-        <div class="emoji-display" id="emojiDisplay"></div>
-        <div class="emoji-input-group">
-          <input type="text" id="emojiGuessInput" placeholder="Guess the title..." />
-          <button id="emojiSubmitBtn" class="primary">Submit</button>
-        </div>
-        <p class="emoji-feedback" id="emojiFeedback"></p>
-      </div>
-
-      <!-- RAPID FIRE MODE UI -->
-      <div class="rapid-fire-panel hidden" id="rapidFirePanel">
-        <div class="rapid-timer-display">
-          <span id="rapidTimer">30s</span>
-        </div>
-        <div class="rapid-progress">
-          <span id="rapidQuestionCounter">Question 1 / 5</span>
-        </div>
+        <button id="nextBtn" class="primary" disabled>Next Question</button>
       </div>
     </section>
 
     <section class="results-screen glass hidden" id="resultScreen">
       <div class="result-header">
-        <h2>Badge Earned</h2>
-        <p id="resultSummary">Nice run!</p>
+        <h2>Quiz Complete! 🎉</h2>
+        <p id="resultSummary" style="white-space: pre-line; margin-top: 1rem;">Nice run!</p>
       </div>
-      <div class="badge-display" id="badgeDisplay"></div>
-      <div class="result-actions">
-        <button id="retryBtn" class="secondary">Play Again</button>
-        <button id="saveBadgeBtn" class="primary">Save Badge</button>
+      <div class="result-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+        <button id="retryBtn" class="primary">Play Again</button>
       </div>
     </section>
   </main>
