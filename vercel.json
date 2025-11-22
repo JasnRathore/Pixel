@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "TMDB_API_KEY": "@tmdb_api_key",
+    "RAWG_API_KEY": "@rawg_api_key",
+    "OPENROUTER_API_KEY": "@openrouter_api_key",
+    "SPOTIFY_CLIENT_ID": "@spotify_client_id",
+    "SPOTIFY_CLIENT_SECRET": "@spotify_client_secret"
+  }
+}
